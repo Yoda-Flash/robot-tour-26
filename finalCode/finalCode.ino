@@ -22,7 +22,6 @@ Motor leftMotor = Motor(AIN1, AIN2, PWMA, OFFSETA, STBY);
 Motor rightMotor = Motor(BIN1, BIN2, PWMB, OFFSETB, STBY);
 
 void drive() {
-  Serial.println("Button pressed");
   while (true) {
     leftMotor.drive(-255);
     rightMotor.drive(-255);
@@ -44,7 +43,6 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if (digitalRead(BUTTONPIN) == HIGH) {
-    Serial.println("Button pressed!");
     drive();
   }
 }
