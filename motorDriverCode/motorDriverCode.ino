@@ -1,12 +1,12 @@
 #include <SparkFun_TB6612.h>
 
-#define AIN1 2
+#define AIN1 4
 #define BIN1 7
-#define AIN2 4
+#define AIN2 5
 #define BIN2 8
-#define PWMA 5
+#define PWMA 3
 #define PWMB 6
-#define STBY 9
+#define STBY 8
 
 const int offsetA = 1;
 const int offsetB = 1;
@@ -27,17 +27,14 @@ void setup() {
 
 void loop() {
   motor1.drive(-255);
-  motor2.drive(255);
   delay(1000);
-  motor1.brake();
-  motor2.brake();
 
   startOfLoopTime = millis();
 }
 
-double getSpeed(PWM, maxRPM) {
-  double pwm_percent = abs(PWM)/255;
-  return ((pwm_percent * max_RPM)/60)*PI*6;
-  //returns in cm/seconds
+// double getSpeed(PWM, maxRPM) {
+//   double pwm_percent = abs(PWM)/255;
+//   return ((pwm_percent * max_RPM)/60)*PI*6;
+//   //returns in cm/seconds
 
-}
+// }
