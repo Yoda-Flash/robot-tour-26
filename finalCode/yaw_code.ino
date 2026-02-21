@@ -30,7 +30,7 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\n' };
 
-void setup() {
+void beginIMUCode() {
     // join I2C bus (I2Cdev library doesn't do this automatically)
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
         Wire.begin();
@@ -108,9 +108,4 @@ float getYaw() {
         Serial.println(yaw);
     }
     return yaw;
-}
-
-void loop() {
-    getYaw();
-    delay(1000);
 }

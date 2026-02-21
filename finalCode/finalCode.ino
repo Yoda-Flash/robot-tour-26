@@ -1,5 +1,6 @@
 #include <SparkFun_TB6612.h>
 // Left motor is A, right motor is B
+
 #define PWMA 15
 #define AIN2 14
 #define AIN1 13
@@ -21,6 +22,8 @@
 Motor leftMotor = Motor(AIN1, AIN2, PWMA, OFFSETA, STBY);
 Motor rightMotor = Motor(BIN1, BIN2, PWMB, OFFSETB, STBY);
 
+float yaw;
+
 void drive() {
   while (true) {
     leftMotor.drive(-255);
@@ -38,9 +41,12 @@ void drive() {
 void setup() {
   // put your setup code here, to run once:
   pinMode(BUTTONPIN, INPUT);
+  beginIMUCode();
 }
 
 void loop() {
+  yaw = getYaw();
+
   // put your main code here, to run repeatedly:
   if (digitalRead(BUTTONPIN) == HIGH) {
     drive();
