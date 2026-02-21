@@ -38,22 +38,10 @@ void beginIMUCode() {
     #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
         Fastwire::setup(400, true);
     #endif
-
     Serial.begin(115200);
-    while (!Serial); // wait for Leonardo enumeration, others continue immediately
-
-    // initialize device
-    Serial.println(F("Initializing I2C devices..."));
+    
     mpu.initialize();
 
-    // wait for ready
-    Serial.println(F("\nSend any character to begin DMP programming and demo: "));
-    while (Serial.available() && Serial.read()); // empty buffer
-    while (!Serial.available());                 // wait for data
-    while (Serial.available() && Serial.read()); // empty buffer again
-
-    // load and configure the DMP
-    Serial.println(F("Initializing DMP..."));
     devStatus = mpu.dmpInitialize();
 
     // supply your own gyro offsets here, scaled for min sensitivity
@@ -69,11 +57,7 @@ void beginIMUCode() {
         mpu.CalibrateGyro(6);
         mpu.PrintActiveOffsets();
         // turn on the DMP, now that it's ready
-        Serial.println(F("Enabling DMP..."));
         mpu.setDMPEnabled(true);
-
-        // set our DMP Ready flag so the main loop() function knows it's okay to use it
-        Serial.println(F("DMP ready! Waiting for first interrupt..."));
         dmpReady = true;
 
         // get expected DMP packet size for later comparison
@@ -96,7 +80,7 @@ void beginIMUCode() {
 float getYaw() {
     float yaw;
     // if programming failed, don't try to do anything
-    if (!dmpReady) return;
+    if (!dmpReady) return NULL;
     // read a packet from FIFO
     if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { // Get the Latest packet 
         // display Euler angles in degrees
