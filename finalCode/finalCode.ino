@@ -32,6 +32,10 @@ volatile long pulseCountA = 0;
 volatile long pulseCountB = 0;
 volatile long distanceInCM = 0;
 
+float kP = 0;
+float kI = 0;
+float Kd = 0;
+
 void countAPulse() {
   if (digitalRead(ENCODERPINA2) == HIGH) {
     pulseCountA++;
@@ -40,15 +44,14 @@ void countAPulse() {
   }
 }
 
-void countBPulse() {
+float countBPulse() {
   if (digitalRead(ENCODERPINB2) == HIGH) {
     pulseCountB++;
   } else {
     pulseCountB--;
   }
-  Serial.println("Pulse count "+ String(pulseCountB) + "Pulse per shaft revolution "+ String(PULSESPERSHAFTREVOLUTION) + "Divided "+ String(pulseCountB/PULSESPERSHAFTREVOLUTION));
-  distanceInCM = pulseCountB/PULSESPERSHAFTREVOLUTION*M_PI*WHEELDIAMETERB;
-  Serial.println(distanceInCM);
+  distanceInCm = pulseCountB/PULSESPERSHAFTREVOLUTION*M_PI*WHEELDIAMETERB;
+  return distanceInCm;
 }
 
 // void driveForDistance(float distance, float speed) {
