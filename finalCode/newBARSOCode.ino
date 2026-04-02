@@ -14,11 +14,11 @@
 
 #define ENCODERPINA1 27
 #define ENCODERPINA2 28
-#define ENCODERPINB1 17
-#define ENCODERPINB2 16
+#define ENCODERPINB1 20
+#define ENCODERPINB2 19
 
 #define WHEELDIAMETERA 6.00f   // cm
-#define WHEELDIAMETERB 6.22f   // cm
+#define WHEELDIAMETERB 6.00f   // cm
 #define PULSESPERSHAFTREVOLUTION 1470.0f
 
 #define BUTTONPIN 2
@@ -36,16 +36,16 @@ float yaw = 0.0f;
 
 // Distance PID gains
 float kP = 8.0f;
-float kI = 0.08f;
-float kD = 2.0f;
+float kI = 0.08f; //0.08
+float kD = 0.0f; //2
 
 // Optional heading correction gain
-float kYaw = 2.0f;
+float kYaw = -2.0f;
 
 // Turn PID gains
-float kPTurn = 3.2f;
-float kITurn = 0.01f;
-float kDTurn = 0.35f;
+float kPTurn = -3.2f;
+float kITurn = -0.01f;
+float kDTurn = -0.35f;
 
 // Stop condition
 const float DIST_TOLERANCE_CM = 0.5f;   // acceptable final error
@@ -56,8 +56,8 @@ const float TURN_TOLERANCE_DEG = 1.0f; // acceptable final error
 const unsigned long TURN_SETTLE_TIME_MS = 150;
 
 // Motor command limits
-const int MAX_MOTOR_CMD = 180;
-const int MIN_MOTOR_CMD = 40; // possibly lower depending on how high the friction is
+const int MAX_MOTOR_CMD = 255;
+const int MIN_MOTOR_CMD = 14; // possibly lower depending on how high the friction is
 
 void countAPulse() {
   if (digitalRead(ENCODERPINA2) == HIGH) {
@@ -65,6 +65,8 @@ void countAPulse() {
   } else {
     pulseCountA--;
   }
+  Serial.print("A distance: ");
+  Serial.println(getDistanceCmA());
 }
 
 void countBPulse() {
@@ -73,6 +75,8 @@ void countBPulse() {
   } else {
     pulseCountB--;
   }
+  Serial.print("B distance: ");
+  Serial.println(getDistanceCmB());
 }
 
 float getDistanceCmA() {
@@ -127,10 +131,10 @@ void driveToDistancePID(float targetDistanceCm) {
   while (true) {
     if (digitalRead(BUTTONPIN) == HIGH) {
       stopMotors();
-      delay(300);
+      Serial.println("Stopped motors");
+      delay(1000);
       return;
     }
-
     unsigned long currentTime = millis();
     float dt = (currentTime - previousTime) / 1000.0f;
 
@@ -138,7 +142,7 @@ void driveToDistancePID(float targetDistanceCm) {
       dt = 0.001f;
     }
 
-    float distanceCm = getAverageDistanceCm();
+    float distanceCm = getDistanceCmA();//getAverageDistanceCm();
     float error = targetDistanceCm - distanceCm;
 
     // PID terms
@@ -193,6 +197,10 @@ void driveToDistancePID(float targetDistanceCm) {
     // Debug prints in the main loop only, never in the ISR
     Serial.print("Dist: ");
     Serial.print(distanceCm);
+    Serial.print("  Left commanded: ");
+    Serial.print(leftCmd);
+    Serial.print("  Right commanded: ");
+    Serial.print(rightCmd);
     Serial.print("  Error: ");
     Serial.print(error);
     Serial.print("  PID: ");
@@ -221,7 +229,8 @@ void turnToAnglePID(float targetTurnDegrees) {
   while (true) {
     if (digitalRead(BUTTONPIN) == HIGH) {
       stopMotors();
-      delay(300);
+      Serial.println("Stopped motors");
+      delay(1000);
       return;
     }
 
@@ -294,6 +303,7 @@ void turnToAnglePID(float targetTurnDegrees) {
   stopMotors();
 }
 
+
 // -------------------- Arduino setup/loop --------------------
 void setup() {
   Serial.begin(115200);
@@ -313,12 +323,11 @@ void setup() {
 
 void loop() {
   if (digitalRead(BUTTONPIN) == HIGH) {
-    delay(200);
-
-    driveToDistancePID(70.0f);  // drive 70 cm
+    delay(1000);
+    driveToDistancePID(150.0f);  // drive 70 cm
     delay(500);
 
-    turnToAnglePID(90.0f);      // turn 90 degrees
+    // turnToAnglePID(90.0f);      // turn 90 degrees
     delay(10000);
   }
 }

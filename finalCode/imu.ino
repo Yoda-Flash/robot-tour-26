@@ -7,6 +7,9 @@
 
 MPU6050 mpu;
 
+#define SDA_PIN 18
+#define SCL_PIN 19
+
 #define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
 
@@ -33,6 +36,8 @@ uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\
 void beginIMUCode() {
     // join I2C bus (I2Cdev library doesn't do this automatically)
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+        // Wire.setSDA(SDA_PIN);
+        // Wire.setSCL(SCL_PIN);
         Wire.begin();
         Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
     #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
@@ -80,8 +85,9 @@ void beginIMUCode() {
 float getYaw() {
     float yaw;
     // if programming failed, don't try to do anything
-    if (!dmpReady) return NULL;
-    // read a packet from FIFO
+    // if (!dmpReady) return NULL;
+     // read a packet from FIFO
+    Serial.println(mpu.dmpGetYawPitchRoll(ypr, &q, &gravity));
     if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { // Get the Latest packet 
         // display Euler angles in degrees
         mpu.dmpGetQuaternion(&q, fifoBuffer);
