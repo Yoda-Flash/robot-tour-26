@@ -1,31 +1,31 @@
 #include <SparkFun_TB6612.h>
 #include <math.h>
 
-#define PWMA 15
-#define AIN2 14
-#define AIN1 13
-#define STBY 12
-#define BIN1 11
-#define BIN2 10
-#define PWMB 9
+#define PWMA 4   //15
+#define AIN2 16  //14
+#define AIN1 17  //13
+#define STBY 5   //12
+#define BIN1 18  //11
+#define BIN2 23  //10
+#define PWMB 19  //9
 
 #define OFFSETA 1
 #define OFFSETB 1
 
-#define ENCODERPINA1 27
-#define ENCODERPINA2 28
-#define ENCODERPINB1 20
-#define ENCODERPINB2 19
+#define ENCODERPINA1 33
+#define ENCODERPINA2 32
+#define ENCODERPINB1 26
+#define ENCODERPINB2 25
 
-#define WHEELDIAMETERA 6.00f   // cm
-#define WHEELDIAMETERB 6.00f   // cm
+#define WHEELDIAMETERA 6.00f  // cm
+#define WHEELDIAMETERB 6.00f  // cm
 #define PULSESPERSHAFTREVOLUTION 1470.0f
 
-#define BUTTONPIN 2
+#define BUTTONPIN 34
 
 #define FORWARD_SIGN 1
 
-Motor leftMotor  = Motor(AIN1, AIN2, PWMA, OFFSETA, STBY);
+Motor leftMotor = Motor(AIN1, AIN2, PWMA, OFFSETA, STBY);
 Motor rightMotor = Motor(BIN1, BIN2, PWMB, OFFSETB, STBY);
 
 // -------------------- Globals --------------------
@@ -33,31 +33,35 @@ volatile long pulseCountA = 0;
 volatile long pulseCountB = 0;
 
 float yaw = 0.0f;
+float initialYaw = 0.0f;
 
 // Distance PID gains
-float kP = 8.0f;
-float kI = 0.08f; //0.08
-float kD = 0.0f; //2
+float kP = 5.0f;
+float kI = 0.08f;  //0.08
+float kD = 0.0f;   //2
 
 // Optional heading correction gain
 float kYaw = -2.0f;
 
 // Turn PID gains
-float kPTurn = -3.2f;
-float kITurn = -0.01f;
-float kDTurn = -0.35f;
+float kPTurn = -8.0f;
+float kITurn = -0.01f;  //-0.01f;
+float kDTurn = 0.0f;   //-0.35f;
 
 // Stop condition
-const float DIST_TOLERANCE_CM = 0.5f;   // acceptable final error
+const float DIST_TOLERANCE_CM = 0.5f;  // acceptable final error
 const unsigned long SETTLE_TIME_MS = 150;
 
 // Turn stop condition
-const float TURN_TOLERANCE_DEG = 1.0f; // acceptable final error
+const float TURN_TOLERANCE_DEG = 1.0f;  // acceptable final error
 const unsigned long TURN_SETTLE_TIME_MS = 150;
 
 // Motor command limits
 const int MAX_MOTOR_CMD = 255;
-const int MIN_MOTOR_CMD = 14; // possibly lower depending on how high the friction is
+const int MIN_MOTOR_CMD = 25;  // possibly lower depending on how high the friction is
+
+boolean stopButtonPressed = false;
+
 
 void countAPulse() {
   if (digitalRead(ENCODERPINA2) == HIGH) {
@@ -65,8 +69,6 @@ void countAPulse() {
   } else {
     pulseCountA--;
   }
-  Serial.print("A distance: ");
-  Serial.println(getDistanceCmA());
 }
 
 void countBPulse() {
@@ -75,8 +77,6 @@ void countBPulse() {
   } else {
     pulseCountB--;
   }
-  Serial.print("B distance: ");
-  Serial.println(getDistanceCmB());
 }
 
 float getDistanceCmA() {
@@ -119,20 +119,29 @@ float wrapAngle180(float angleDeg) {
   return angleDeg;
 }
 
-void driveToDistancePID(float targetDistanceCm) {
+float snapToNearest45(float angleDeg) {
+  Serial.print("Initial yaw: ");
+  Serial.print(initialYaw);
+  Serial.print("  Rounding to: ");
+  Serial.println(wrapAngle180(round((angleDeg - initialYaw)/45)*45 + initialYaw));
+  return wrapAngle180(round((angleDeg - initialYaw)/45)*45 + initialYaw);
+}
+
+void d(float targetDistanceCm) {
   resetEncoders();
 
-  float startYaw = getYaw();   // hold initial heading
+  float startYaw = snapToNearest45(getYaw());  // hold initial heading
   float integral = 0.0f;
   float previousError = targetDistanceCm;
   unsigned long previousTime = millis();
   unsigned long inToleranceSince = 0;
 
-  while (true) {
+  while (!stopButtonPressed) {
     if (digitalRead(BUTTONPIN) == HIGH) {
       stopMotors();
       Serial.println("Stopped motors");
       delay(1000);
+      stopButtonPressed = true;
       return;
     }
     unsigned long currentTime = millis();
@@ -142,7 +151,7 @@ void driveToDistancePID(float targetDistanceCm) {
       dt = 0.001f;
     }
 
-    float distanceCm = getDistanceCmA();//getAverageDistanceCm();
+    float distanceCm = getDistanceCmA();  //getAverageDistanceCm();
     float error = targetDistanceCm - distanceCm;
 
     // PID terms
@@ -171,13 +180,17 @@ void driveToDistancePID(float targetDistanceCm) {
 
     // Heading correction
     yaw = getYaw();
-    float yawError = startYaw - yaw;
+    float yawError = wrapAngle180(startYaw - yaw);
     int correction = (int)(kYaw * yawError);
 
-    int leftCmd  = direction * (baseCmd - correction);
+    if (targetDistanceCm < 0) {
+      correction *= -1;
+    }
+
+    int leftCmd = direction * (baseCmd - correction);
     int rightCmd = direction * (baseCmd + correction);
 
-    leftCmd  = constrain(leftCmd, -255, 255);
+    leftCmd = constrain(leftCmd, -255, 255);
     rightCmd = constrain(rightCmd, -255, 255);
 
     // Stop logic: distance must stay inside tolerance briefly
@@ -197,6 +210,10 @@ void driveToDistancePID(float targetDistanceCm) {
     // Debug prints in the main loop only, never in the ISR
     Serial.print("Dist: ");
     Serial.print(distanceCm);
+    Serial.print("Distance A: ");
+    Serial.println(getDistanceCmA());
+    Serial.print("Distance B: ");
+    Serial.println(getDistanceCmB());
     Serial.print("  Left commanded: ");
     Serial.print(leftCmd);
     Serial.print("  Right commanded: ");
@@ -206,7 +223,11 @@ void driveToDistancePID(float targetDistanceCm) {
     Serial.print("  PID: ");
     Serial.print(pidOutput);
     Serial.print("  Yaw: ");
-    Serial.println(yaw);
+    Serial.print(yaw);
+    Serial.print("  Yaw error: ");
+    Serial.print(yawError);
+    Serial.print("  Yaw correction: ");
+    Serial.println(correction);
 
     previousError = error;
     previousTime = currentTime;
@@ -215,10 +236,11 @@ void driveToDistancePID(float targetDistanceCm) {
   }
 
   stopMotors();
+  delay(500);
 }
 
-void turnToAnglePID(float targetTurnDegrees) {
-  float startYaw = getYaw();
+void t(float targetTurnDegrees) {
+  float startYaw = snapToNearest45(getYaw());
   float targetYaw = wrapAngle180(startYaw + targetTurnDegrees);
 
   float integral = 0.0f;
@@ -226,11 +248,12 @@ void turnToAnglePID(float targetTurnDegrees) {
   unsigned long previousTime = millis();
   unsigned long inToleranceSince = 0;
 
-  while (true) {
+  while (!stopButtonPressed) {
     if (digitalRead(BUTTONPIN) == HIGH) {
       stopMotors();
       Serial.println("Stopped motors");
       delay(1000);
+      stopButtonPressed = true;
       return;
     }
 
@@ -265,10 +288,10 @@ void turnToAnglePID(float targetTurnDegrees) {
     int direction = (pidOutput >= 0) ? 1 : -1;
 
     // Tank turn: left and right motors run opposite directions
-    int leftCmd  = -direction * turnCmd;
-    int rightCmd =  direction * turnCmd;
+    int leftCmd = -direction * turnCmd;
+    int rightCmd = direction * turnCmd;
 
-    leftCmd  = constrain(leftCmd, -255, 255);
+    leftCmd = constrain(leftCmd, -255, 255);
     rightCmd = constrain(rightCmd, -255, 255);
 
     // Stop logic: yaw error must stay inside tolerance briefly
@@ -301,6 +324,7 @@ void turnToAnglePID(float targetTurnDegrees) {
   }
 
   stopMotors();
+  delay(500);
 }
 
 
@@ -323,11 +347,36 @@ void setup() {
 
 void loop() {
   if (digitalRead(BUTTONPIN) == HIGH) {
+    initialYaw = getYaw();
+    Serial.println(initialYaw);
+    stopButtonPressed = false;
     delay(1000);
-    driveToDistancePID(150.0f);  // drive 70 cm
-    delay(500);
-
-    // turnToAnglePID(90.0f);      // turn 90 degrees
-    delay(10000);
+    d(175.0f);
+    t(-90.0f);
+    d(100.0f);
+    t(-90.0f);
+    d(25.0f);
+    t(-90.0f);
+    d(50.0f);
+    t(90.0f);
+    d(50.0f);
+    d(-50.0f);
+    t(90.0f);
+    d(150.0f);
+    d(-75.0f);
+    t(-90.0f);
+    d(100.0f);
+    t(90.0f);
+    d(75.0f);
+    d(-50.0f);
+    t(90.0f);
+    d(50.0f);
+    t(-90.0f);
+    d(50.0f);
+    t(90.0f);
+    d(50.0f);
+    d(-50.0f);
+    t(90.0f);
+    d(100.0f);
   }
 }

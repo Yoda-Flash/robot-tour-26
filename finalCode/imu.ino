@@ -5,12 +5,12 @@
     #include "Wire.h"
 #endif
 
+#define I2C_SDA 21
+#define I2C_SCL 22
+
 MPU6050 mpu;
 
-#define SDA_PIN 18
-#define SCL_PIN 19
-
-#define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
+#define LED_PIN 2 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
 
 // MPU control/status vars
@@ -40,7 +40,7 @@ void beginIMUCode() {
         // Wire.setSCL(SCL_PIN);
         Wire.begin();
         Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
-    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE\
         Fastwire::setup(400, true);
     #endif
     Serial.begin(115200);
@@ -87,15 +87,14 @@ float getYaw() {
     // if programming failed, don't try to do anything
     // if (!dmpReady) return NULL;
      // read a packet from FIFO
-    Serial.println(mpu.dmpGetYawPitchRoll(ypr, &q, &gravity));
     if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { // Get the Latest packet 
         // display Euler angles in degrees
         mpu.dmpGetQuaternion(&q, fifoBuffer);
         mpu.dmpGetGravity(&gravity, &q);
         mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-        Serial.print("yaw\t");
+        // Serial.print("yaw\t");
         yaw = ypr[0] * 180/M_PI;
-        Serial.println(yaw);
+        // Serial.println(yaw);
     }
     return yaw;
 }
